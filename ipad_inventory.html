@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>iPad棚卸し</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #1a1d27;
+    --bg3: #22263a;
+    --border: rgba(255,255,255,0.08);
+    --border-active: rgba(99,179,255,0.5);
+    --text: #e8eaf0;
+    --text2: #8b90a8;
+    --text3: #545878;
+    --accent: #4f9fff;
+    --accent2: #2d7aff;
+    --green: #34c97e;
+    --green-bg: rgba(52,201,126,0.1);
+    --red: #ff5f5f;
+    --red-bg: rgba(255,95,95,0.1);
+    --amber: #ffb930;
+    --amber-bg: rgba(255,185,48,0.1);
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Noto Sans JP', sans-serif;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; overflow: hidden; }
+
+  /* Layout */
+  .app { display: flex; flex-direction: column; height: 100dvh; max-width: 430px; margin: 0 auto; }
+
+  /* Header */
+  .header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .header-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-badge { font-family: var(--mono); font-size: 11px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; color: var(--text2); }
+  .progress-row { display: flex; align-items: center; gap: 10px; }
+  .progress-bar { flex: 1; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 2px; transition: width 0.4s ease; }
+  .progress-label { font-family: var(--mono); font-size: 12px; color: var(--text2); white-space: nowrap; }
+
+  /* Tabs */
+  .tabs { display: flex; padding: 10px 20px 0; gap: 4px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .tab { flex: 1; padding: 8px 4px; font-size: 13px; font-weight: 500; color: var(--text3); border: none; background: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Screens */
+  .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .screen.active { display: flex; }
+
+  /* Scan screen */
+  .scan-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+
+  .input-section { margin-bottom: 16px; }
+  .input-label { font-size: 11px; font-weight: 500; color: var(--text2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .serial-input-wrap { position: relative; }
+  .serial-input { width: 100%; background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--text); letter-spacing: 1px; outline: none; transition: border-color 0.2s; -webkit-appearance: none; text-transform: uppercase; }
+  .serial-input:focus { border-color: var(--border-active); }
+  .serial-input::placeholder { color: var(--text3); font-size: 14px; letter-spacing: 0; }
+  .serial-hint { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  .selects-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .select-wrap { position: relative; }
+  .select-wrap select { width: 100%; background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 12px 36px 12px 14px; font-family: var(--sans); font-size: 14px; color: var(--text); outline: none; -webkit-appearance: none; appearance: none; cursor: pointer; transition: border-color 0.2s; }
+  .select-wrap select:focus { border-color: var(--border-active); }
+  .select-wrap::after { content: '▾'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 12px; pointer-events: none; }
+  .select-label { font-size: 11px; font-weight: 500; color: var(--text2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+
+  .room-input { width: 100%; background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-family: var(--sans); font-size: 14px; color: var(--text); outline: none; -webkit-appearance: none; transition: border-color 0.2s; }
+  .room-input:focus { border-color: var(--border-active); }
+  .room-input::placeholder { color: var(--text3); }
+
+  .register-btn { width: 100%; padding: 16px; background: var(--accent2); border: none; border-radius: var(--radius); font-family: var(--sans); font-size: 16px; font-weight: 700; color: #fff; cursor: pointer; letter-spacing: 0.3px; transition: all 0.15s; margin-top: 4px; }
+  .register-btn:active { transform: scale(0.98); background: var(--accent); }
+  .register-btn:disabled { background: var(--bg3); color: var(--text3); }
+
+  /* Confirm dialog */
+  .confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 300; align-items: flex-end; justify-content: center; padding-bottom: env(safe-area-inset-bottom); }
+  .confirm-overlay.active { display: flex; }
+  .confirm-sheet { background: var(--bg2); border-radius: 16px 16px 0 0; width: 100%; max-width: 430px; padding: 20px 20px calc(16px + env(safe-area-inset-bottom)); }
+  .confirm-title { font-size: 15px; font-weight: 500; text-align: center; margin-bottom: 6px; }
+  .confirm-sub { font-size: 13px; color: var(--text2); text-align: center; margin-bottom: 18px; font-family: var(--mono); }
+  .confirm-btns { display: flex; flex-direction: column; gap: 8px; }
+  .confirm-del { padding: 14px; background: var(--red-bg); border: 1.5px solid rgba(255,95,95,0.3); border-radius: var(--radius); font-family: var(--sans); font-size: 15px; font-weight: 700; color: var(--red); cursor: pointer; }
+  .confirm-cancel-btn { padding: 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--sans); font-size: 15px; color: var(--text2); cursor: pointer; }
+
+  /* Sync status dot */
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); transition: background 0.3s; }
+  .sync-dot.synced { background: var(--green); }
+  .sync-dot.syncing { background: var(--amber); animation: pulse 1s ease-in-out infinite; }
+  .sync-dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* Setup banner */
+  .setup-banner { background: var(--amber-bg); border: 1px solid rgba(255,185,48,0.3); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 12px; color: var(--amber); display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .setup-banner.hidden { display: none; }
+
+  /* Paste button */
+  .paste-btn { display: block; width: 100%; margin-top: 6px; padding: 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; font-family: var(--sans); font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; text-align: center; transition: all 0.15s; }
+  .paste-btn:active { border-color: var(--accent); color: var(--accent); }
+  .paste-hint { font-size: 11px; color: var(--text3); margin-top: 5px; text-align: center; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 90px); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--green); color: #fff; font-size: 13px; font-weight: 500; padding: 10px 20px; border-radius: 100px; opacity: 0; pointer-events: none; transition: all 0.3s; white-space: nowrap; z-index: 100; }
+  .toast.error { background: var(--red); }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* List screen */
+  .list-header { padding: 14px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .list-search { width: 100%; background: var(--bg2); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: var(--sans); font-size: 14px; color: var(--text); outline: none; -webkit-appearance: none; }
+  .list-search::placeholder { color: var(--text3); }
+  .list-search:focus { border-color: var(--border-active); }
+
+  .list-stats { display: flex; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; overflow-x: auto; }
+  .stat-chip { flex-shrink: 0; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 12px; color: var(--text2); font-family: var(--mono); white-space: nowrap; }
+  .stat-chip span { color: var(--text); font-weight: 500; }
+
+  .list-body { flex: 1; overflow-y: auto; }
+  .list-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text3); gap: 8px; }
+  .list-empty-icon { font-size: 40px; opacity: 0.4; }
+  .list-empty-text { font-size: 14px; }
+
+  .list-item { display: flex; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--border); gap: 12px; animation: slideIn 0.2s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+  .item-serial { flex: 1; font-family: var(--mono); font-size: 15px; font-weight: 500; letter-spacing: 0.5px; }
+  .item-meta { text-align: right; }
+  .item-gen { font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 5px; margin-bottom: 3px; display: inline-block; }
+  .gen-8 { background: rgba(99,179,255,0.15); color: #63b3ff; }
+  .gen-10 { background: rgba(52,201,126,0.15); color: #34c97e; }
+  .gen-a16 { background: rgba(255,185,48,0.15); color: #ffb930; }
+  .item-room { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .item-delete { background: none; border: none; color: var(--text3); font-size: 18px; padding: 4px 0 4px 8px; cursor: pointer; flex-shrink: 0; }
+  .item-delete:active { color: var(--red); }
+
+  /* Export screen */
+  .export-body { flex: 1; overflow-y: auto; padding: 20px; }
+  .export-section { margin-bottom: 20px; }
+  .export-title { font-size: 13px; font-weight: 700; color: var(--text2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .summary-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .summary-num { font-family: var(--mono); font-size: 28px; font-weight: 500; margin-bottom: 2px; }
+  .summary-label { font-size: 12px; color: var(--text2); }
+  .summary-card.total { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; }
+  .summary-card.total .summary-num { font-size: 36px; color: var(--accent); }
+
+  .export-btn { width: 100%; padding: 14px; background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--radius); font-family: var(--sans); font-size: 15px; font-weight: 500; color: var(--text); cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s; }
+  .export-btn:active { border-color: var(--accent); color: var(--accent); }
+  .export-btn .icon { font-size: 20px; }
+
+  .clear-btn { width: 100%; padding: 14px; background: none; border: 1.5px solid var(--red-bg); border-radius: var(--radius); font-family: var(--sans); font-size: 15px; font-weight: 500; color: var(--red); cursor: pointer; margin-top: 8px; transition: all 0.15s; }
+  .clear-btn:active { background: var(--red-bg); }
+
+  /* Safe area */
+  .scan-body, .list-body, .export-body { padding-bottom: calc(env(safe-area-inset-bottom) + 16px); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-title">iPad棚卸し</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="header-badge" id="monthLabel"></div>
+        <div class="sync-dot" id="syncDot" title="同期状態"></div>
+      </div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="progress-label" id="progressLabel">0 / 200</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('scan')">スキャン</button>
+    <button class="tab" onclick="switchTab('list')">一覧</button>
+    <button class="tab" onclick="switchTab('export')">集計・出力</button>
+  </div>
+
+  <!-- Scan Screen -->
+  <div class="screen active" id="screen-scan">
+    <div class="scan-body">
+      <div class="setup-banner" id="setupBanner" onclick="switchTab('export')">
+        ⚙ Google Sheetsの連携設定が未完了です。タップして設定する
+      </div>
+
+      <div class="input-section" style="margin-bottom:12px">
+        <div class="input-label">担当者名</div>
+        <input type="text" class="room-input" id="operatorInput" placeholder="例: 山田" autocomplete="off">
+      </div>
+
+      <div class="input-section">
+        <div class="input-label">シリアル番号</div>
+        <div class="serial-input-wrap">
+          <input type="text" class="serial-input" id="serialInput"
+            placeholder="例: FFMG6F6DPLJR"
+            maxlength="20"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            inputmode="text"
+          >
+          <div class="serial-hint" id="serialHint"></div>
+        </div>
+        <button class="paste-btn" onclick="pasteSerial()">📋 クリップボードから貼り付け</button>
+        <div class="paste-hint">Live Textでコピーしたシリアル番号を貼り付け</div>
+      </div>
+
+      <div class="selects-row">
+        <div>
+          <div class="select-label">iPad世代</div>
+          <div class="select-wrap">
+            <select id="genSelect">
+              <option value="">選択</option>
+              <option value="第8世代">第8世代</option>
+              <option value="第10世代">第10世代</option>
+              <option value="A16世代">A16世代</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="select-label">場所・部屋</div>
+          <div class="select-wrap">
+            <select id="roomSelect" onchange="handleRoomSelect(this.value)">
+              <option value="">選択 or 入力</option>
+              <option value="1F-101">1F-101</option>
+              <option value="1F-102">1F-102</option>
+              <option value="2F-201">2F-201</option>
+              <option value="2F-202">2F-202</option>
+              <option value="3F-301">3F-301</option>
+              <option value="custom">その他（直接入力）</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="customRoomWrap" style="margin-bottom:16px; display:none;">
+        <div class="select-label">部屋番号（直接入力）</div>
+        <input type="text" class="room-input" id="customRoom" placeholder="例: 4F-401">
+      </div>
+
+      <button class="register-btn" id="registerBtn" onclick="register()">登録する</button>
+    </div>
+  </div>
+
+  <!-- List Screen -->
+  <div class="screen" id="screen-list">
+    <div class="list-header">
+      <input type="text" class="list-search" id="searchInput" placeholder="シリアル番号・部屋で検索…" oninput="renderList()">
+    </div>
+    <div class="list-stats" id="listStats"></div>
+    <div class="list-body" id="listBody"></div>
+  </div>
+
+  <!-- Export Screen -->
+  <div class="screen" id="screen-export">
+    <div class="export-body">
+      <div class="export-section">
+        <div class="export-title">今月の集計</div>
+        <div class="summary-grid" id="summaryGrid"></div>
+      </div>
+      <div class="export-section">
+        <div class="export-title">データ出力</div>
+        <button class="export-btn" onclick="exportCSV()">
+          <span class="icon">📄</span> CSVで書き出す
+        </button>
+        <button class="export-btn" onclick="copyAll()">
+          <span class="icon">📋</span> クリップボードにコピー
+        </button>
+      </div>
+      <div class="export-section" style="margin-top:8px">
+        <div class="export-title">Google Sheets 連携設定</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.6">
+          Apps ScriptのデプロイURLを貼り付けてください
+        </div>
+        <input type="text" class="room-input" id="gasUrlInput"
+          placeholder="https://script.google.com/macros/s/.../exec"
+          style="margin-bottom:8px;font-size:12px;font-family:var(--mono)"
+          oninput="saveGasUrl(this.value)">
+        <button class="export-btn" onclick="testConnection()" style="margin-bottom:0">
+          <span class="icon">🔗</span> 接続テスト
+        </button>
+      </div>
+
+      <div class="export-section">
+        <div class="export-title">手動同期</div>
+        <button class="export-btn" onclick="syncToSheets()">
+          <span class="icon">☁</span> 今すぐSheetsに送信
+        </button>
+      </div>
+
+      <button class="clear-btn" onclick="clearData()">今月のデータをリセット</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-sheet">
+    <div class="confirm-title">削除しますか？</div>
+    <div class="confirm-sub" id="confirmSerial"></div>
+    <div class="confirm-btns">
+      <button class="confirm-del" id="confirmDelBtn">削除する</button>
+      <button class="confirm-cancel-btn" onclick="closeConfirm()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+const TARGET = 200;
+let records = JSON.parse(localStorage.getItem('ipad_inventory') || '[]');
+
+// Init
+function init() {
+  const now = new Date();
+  document.getElementById('monthLabel').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月`;
+  updateProgress();
+  renderList();
+  renderSummary();
+
+  // Auto-focus serial on scan tab
+  document.getElementById('serialInput').focus();
+
+  // Real-time serial validation
+  document.getElementById('serialInput').addEventListener('input', function() {
+    const v = this.value.toUpperCase();
+    this.value = v;
+    const hint = document.getElementById('serialHint');
+    if (v.length >= 10) {
+      const dup = records.find(r => r.serial === v);
+      if (dup) {
+        hint.textContent = '⚠ 登録済み';
+        hint.style.color = 'var(--amber)';
+      } else {
+        hint.textContent = '✓';
+        hint.style.color = 'var(--green)';
+      }
+    } else {
+      hint.textContent = v.length > 0 ? `${v.length}/10+` : '';
+      hint.style.color = 'var(--text3)';
+    }
+  });
+
+  // Enter key on serial → focus generation
+  document.getElementById('serialInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('genSelect').focus();
+  });
+
+  // Load saved GAS URL
+  const savedUrl = getGasUrl();
+  if (savedUrl) {
+    const inp = document.getElementById('gasUrlInput');
+    if (inp) inp.value = savedUrl;
+  }
+  updateSetupBanner();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['scan','list','export'][i] === tab);
+  });
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+tab).classList.add('active');
+  if (tab === 'list') renderList();
+  if (tab === 'export') renderSummary();
+  if (tab === 'scan') setTimeout(() => document.getElementById('serialInput').focus(), 100);
+}
+
+function handleRoomSelect(val) {
+  const wrap = document.getElementById('customRoomWrap');
+  wrap.style.display = val === 'custom' ? 'block' : 'none';
+  if (val === 'custom') document.getElementById('customRoom').focus();
+}
+
+function getRoom() {
+  const sel = document.getElementById('roomSelect').value;
+  if (sel === 'custom') return document.getElementById('customRoom').value.trim();
+  return sel;
+}
+
+function register() {
+  const serial = document.getElementById('serialInput').value.trim().toUpperCase();
+  const gen = document.getElementById('genSelect').value;
+  const room = getRoom();
+  const operator = document.getElementById('operatorInput').value.trim();
+
+  if (!serial || serial.length < 6) { showToast('シリアル番号を入力してください', true); return; }
+  if (!gen) { showToast('iPad世代を選択してください', true); return; }
+  if (!room) { showToast('場所・部屋番号を選択してください', true); return; }
+
+  if (records.find(r => r.serial === serial)) {
+    showToast('⚠ このシリアルは登録済みです', true); return;
+  }
+
+  const now = new Date();
+  const month = `${now.getFullYear()}年${now.getMonth()+1}月`;
+  const rec = { serial, gen, room, time: now.toISOString(), operator, month, synced: false };
+  records.unshift(rec);
+  save();
+  updateProgress();
+  renderList();
+  renderSummary();
+
+  showToast(`✓ ${serial} を登録しました`);
+
+  // Auto sync if GAS URL is set
+  autoSync(rec);
+
+  // Reset serial input only
+  document.getElementById('serialInput').value = '';
+  document.getElementById('serialHint').textContent = '';
+  document.getElementById('serialInput').focus();
+}
+
+function deleteRecord(serial) {
+  document.getElementById('confirmSerial').textContent = serial;
+  document.getElementById('confirmDelBtn').onclick = () => {
+    records = records.filter(r => r.serial !== serial);
+    save();
+    updateProgress();
+    renderList();
+    renderSummary();
+    closeConfirm();
+    showToast('削除しました');
+  };
+  document.getElementById('confirmOverlay').classList.add('active');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('active');
+}
+
+function save() {
+  localStorage.setItem('ipad_inventory', JSON.stringify(records));
+}
+
+function updateProgress() {
+  const pct = Math.min(100, (records.length / TARGET) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${records.length} / ${TARGET}`;
+}
+
+function renderList() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const filtered = records.filter(r =>
+    r.serial.toLowerCase().includes(q) ||
+    r.room.toLowerCase().includes(q) ||
+    r.gen.toLowerCase().includes(q)
+  );
+
+  // Stats chips
+  const genCounts = {};
+  records.forEach(r => { genCounts[r.gen] = (genCounts[r.gen]||0) + 1; });
+  document.getElementById('listStats').innerHTML =
+    `<div class="stat-chip">合計 <span>${records.length}</span></div>` +
+    Object.entries(genCounts).map(([g,c]) =>
+      `<div class="stat-chip">${g} <span>${c}</span></div>`
+    ).join('');
+
+  const body = document.getElementById('listBody');
+  if (filtered.length === 0) {
+    body.innerHTML = `<div class="list-empty">
+      <div class="list-empty-icon">📋</div>
+      <div class="list-empty-text">${records.length === 0 ? 'まだ登録がありません' : '該当なし'}</div>
+    </div>`;
+    return;
+  }
+
+  const genClass = { '第8世代': 'gen-8', '第10世代': 'gen-10', 'A16世代': 'gen-a16' };
+  body.innerHTML = filtered.map(r => `
+    <div class="list-item">
+      <div class="item-serial">${highlight(r.serial, q)}</div>
+      <div class="item-meta">
+        <div class="item-gen ${genClass[r.gen]||''}">${r.gen}</div>
+        <div class="item-room">${r.room}</div>
+      </div>
+      <button class="item-delete" onclick="deleteRecord('${r.serial}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function highlight(text, q) {
+  if (!q) return text;
+  return text.replace(new RegExp(q, 'gi'), m => `<mark style="background:rgba(79,159,255,0.25);color:var(--accent);border-radius:2px">${m}</mark>`);
+}
+
+function renderSummary() {
+  const genCounts = { '第8世代': 0, '第10世代': 0, 'A16世代': 0 };
+  const roomCounts = {};
+  records.forEach(r => {
+    if (genCounts[r.gen] !== undefined) genCounts[r.gen]++;
+    roomCounts[r.room] = (roomCounts[r.room]||0) + 1;
+  });
+
+  const colors = { '第8世代': 'var(--accent)', '第10世代': 'var(--green)', 'A16世代': 'var(--amber)' };
+  document.getElementById('summaryGrid').innerHTML =
+    `<div class="summary-card total">
+      <div><div class="summary-label">登録済み合計</div><div class="summary-num">${records.length}</div></div>
+      <div style="text-align:right"><div class="summary-label">目標</div><div class="summary-num" style="font-size:20px;color:var(--text2)">${TARGET}台</div></div>
+    </div>` +
+    Object.entries(genCounts).map(([g,c]) =>
+      `<div class="summary-card">
+        <div class="summary-num" style="color:${colors[g]}">${c}</div>
+        <div class="summary-label">${g}</div>
+      </div>`
+    ).join('');
+}
+
+function exportCSV() {
+  const header = 'シリアル番号,iPad世代,場所・部屋番号,登録日時\n';
+  const rows = records.map(r =>
+    `${r.serial},${r.gen},${r.room},${new Date(r.time).toLocaleString('ja-JP')}`
+  ).join('\n');
+  const blob = new Blob(['\uFEFF'+header+rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  a.href = url;
+  a.download = `iPad棚卸し_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSVを書き出しました');
+}
+
+function copyAll() {
+  const header = 'シリアル番号\tiPad世代\t場所・部屋番号\t登録日時\n';
+  const rows = records.map(r =>
+    `${r.serial}\t${r.gen}\t${r.room}\t${new Date(r.time).toLocaleString('ja-JP')}`
+  ).join('\n');
+  navigator.clipboard.writeText(header+rows).then(() => {
+    showToast('クリップボードにコピーしました');
+  });
+}
+
+function clearData() {
+  if (!confirm('今月のデータをすべて削除しますか？\nこの操作は取り消せません。')) return;
+  records = [];
+  save();
+  updateProgress();
+  renderList();
+  renderSummary();
+  showToast('データをリセットしました');
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '') + ' show';
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+
+
+function closeOcr() {
+  document.getElementById('ocrOverlay').classList.remove('active');
+}
+
+function confirmOcr() {
+  if (!ocrDetectedSerial) return;
+  document.getElementById('serialInput').value = ocrDetectedSerial;
+  document.getElementById('serialInput').dispatchEvent(new Event('input'));
+  closeOcr();
+  showToast('シリアル番号を読み取りました');
+}
+
+async function handlePhoto(input) {
+  const file = input.files[0];
+  if (!file) { closeOcr(); return; }
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const originalSrc = e.target.result;
+
+    // Show preview immediately
+    document.getElementById('ocrPreview').src = originalSrc;
+    document.getElementById('ocrPreview').style.display = 'block';
+    document.getElementById('ocrResultBox').style.display = 'flex';
+    document.getElementById('ocrSpinner').style.display = 'block';
+    document.getElementById('ocrResultText').textContent = '';
+    document.getElementById('ocrLabel').textContent = 'AIがシリアル番号を読み取っています…';
+
+    // Resize image for better OCR: max 1600px, JPEG quality 0.92
+    const base64 = await resizeImage(originalSrc, 1600, 0.92);
+    const mimeType = 'image/jpeg';
+
+    const prompt = `この画像はiPhoneまたはiPadの設定アプリ「情報」画面、またはApple Configurator/MDM管理画面を撮影したものです。
+
+「シリアル番号」というラベルの右側にグレーまたは黒の英数字が表示されています。
+その英数字の文字列のみを抽出して返してください。
+
+- シリアル番号は通常10〜12文字の英数字（例: FFMG6F6DPLJR、DMQT3J/A など）
+- グレーの薄い文字でも確実に読み取ること
+- 画面上部のナビゲーションバーに表示されている英数字（モデル番号）は除外すること
+- ラベル「シリアル番号」の右に続く文字列のみを返す
+- 余計な説明・句読点・改行は一切不要
+- 見つからない場合のみ「NOT_FOUND」と返す`;
+
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 100,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
+              { type: 'text', text: prompt }
+            ]
+          }]
+        })
+      });
+
+      const data = await resp.json();
+      const raw = data.content?.[0]?.text?.trim() || 'NOT_FOUND';
+      document.getElementById('ocrSpinner').style.display = 'none';
+
+      if (raw === 'NOT_FOUND' || raw.length < 5) {
+        document.getElementById('ocrResultText').textContent = '読み取れませんでした';
+        document.getElementById('ocrLabel').textContent = 'シリアル番号に近づけて撮り直してください';
+        document.getElementById('ocrActions').style.display = 'flex';
+      } else {
+        // Clean: keep alphanumeric + / -
+        const serial = raw.toUpperCase().replace(/[^A-Z0-9\/\-]/g, '').slice(0, 20);
+        ocrDetectedSerial = serial;
+        document.getElementById('ocrResultText').textContent = serial;
+        document.getElementById('ocrLabel').textContent = '✓ シリアル番号を検出しました';
+        document.getElementById('ocrActions').style.display = 'flex';
+      }
+    } catch (err) {
+      document.getElementById('ocrSpinner').style.display = 'none';
+      document.getElementById('ocrResultText').textContent = 'エラーが発生しました';
+      document.getElementById('ocrLabel').textContent = 'ネットワークを確認してください';
+      document.getElementById('ocrActions').style.display = 'flex';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// Resize image using canvas for better OCR accuracy
+function resizeImage(dataUrl, maxPx, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      if (w > maxPx || h > maxPx) {
+        const scale = maxPx / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const out = canvas.toDataURL('image/jpeg', quality);
+      resolve(out.split(',')[1]);
+    };
+    img.src = dataUrl;
+  });
+}
+
+const GAS_URL_KEY = 'ipad_gas_url';
+
+function saveGasUrl(url) {
+  localStorage.setItem(GAS_URL_KEY, url.trim());
+  updateSetupBanner();
+}
+
+function getGasUrl() {
+  return localStorage.getItem(GAS_URL_KEY) || '';
+}
+
+function updateSetupBanner() {
+  const banner = document.getElementById('setupBanner');
+  if (!banner) return;
+  banner.classList.toggle('hidden', !!getGasUrl());
+}
+
+function setSyncDot(state) {
+  const dot = document.getElementById('syncDot');
+  if (!dot) return;
+  dot.className = 'sync-dot' + (state ? ' ' + state : '');
+}
+
+async function autoSync(rec) {
+  const url = getGasUrl();
+  if (!url) return;
+  try {
+    setSyncDot('syncing');
+    const resp = await fetch(url, {
+      method: 'POST',
+      method: 'POST',
+      body: JSON.stringify([rec])
+    });
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      rec.synced = true;
+      save();
+      setSyncDot('synced');
+      setTimeout(() => setSyncDot(''), 3000);
+    } else {
+      setSyncDot('error');
+    }
+  } catch {
+    setSyncDot('error');
+  }
+}
+
+async function syncToSheets() {
+  const url = getGasUrl();
+  if (!url) { showToast('先にApps ScriptのURLを設定してください', true); return; }
+  const unsynced = records.filter(r => !r.synced);
+  if (unsynced.length === 0) { showToast('未送信のデータはありません'); return; }
+  try {
+    setSyncDot('syncing');
+    showToast(`${unsynced.length}件を送信中…`);
+    const resp = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(unsynced)
+    });
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      unsynced.forEach(r => r.synced = true);
+      save();
+      setSyncDot('synced');
+      showToast(`✓ ${data.count}件をSheetsに送信しました`);
+      setTimeout(() => setSyncDot(''), 3000);
+    } else {
+      setSyncDot('error');
+      showToast('送信に失敗しました', true);
+    }
+  } catch {
+    setSyncDot('error');
+    showToast('ネットワークエラー', true);
+  }
+}
+
+async function testConnection() {
+  const url = document.getElementById('gasUrlInput').value.trim();
+  if (!url) { showToast('URLを入力してください', true); return; }
+
+  // URLフォーマット検証
+  if (!url.startsWith('https://script.google.com/macros/s/') || !url.endsWith('/exec')) {
+    showToast('URLの形式が正しくありません', true);
+    return;
+  }
+
+  // GETはCORSで弾かれるためダミーPOSTで疎通確認
+  try {
+    showToast('接続確認中…');
+    setSyncDot('syncing');
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify([])   // 空配列 = テスト送信
+    });
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      saveGasUrl(url);
+      setSyncDot('synced');
+      showToast('✓ 接続成功！URLを保存しました');
+      setTimeout(() => setSyncDot(''), 3000);
+    } else {
+      setSyncDot('error');
+      showToast('Apps Scriptがエラーを返しました', true);
+    }
+  } catch {
+    // fetch自体が失敗 = ネットワーク or デプロイ未完了
+    setSyncDot('error');
+    showToast('接続エラー。デプロイ設定を確認してください', true);
+  }
+}
+
+
+function extractSerial(raw) {
+  // Remove known label words (Japanese and English)
+  let s = raw
+    .replace(/シリアル番号/g, '')
+    .replace(/シリアル/g, '')
+    .replace(/serial\s*number/gi, '')
+    .replace(/serial/gi, '')
+    .replace(/s\/n/gi, '')
+    .trim();
+
+  // Extract all alphanumeric tokens (allow / and -)
+  const tokens = s.match(/[A-Z0-9][A-Z0-9\/\-]{5,19}/gi) || [];
+
+  // Pick the token most likely to be a serial: 8-15 chars, mix of letters+numbers
+  const scored = tokens.map(t => {
+    const u = t.toUpperCase();
+    const hasLetters = /[A-Z]/.test(u);
+    const hasDigits = /[0-9]/.test(u);
+    const score = (hasLetters && hasDigits ? 10 : 0) + u.length;
+    return { token: u, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored.length ? scored[0].token.slice(0, 20) : null;
+}
+
+function pasteSerial() {
+  navigator.clipboard.readText().then(text => {
+    const serial = extractSerial(text);
+    if (!serial || serial.length < 6) {
+      showToast('シリアル番号が見つかりませんでした', true);
+      return;
+    }
+    document.getElementById('serialInput').value = serial;
+    document.getElementById('serialInput').dispatchEvent(new Event('input'));
+    showToast('✓ ' + serial);
+  }).catch(() => {
+    document.getElementById('serialInput').focus();
+    showToast('入力欄を長押しして「ペースト」を選んでください', true);
+  });
+}
+
+
+init();
+</script>
+</body>
+</html>
