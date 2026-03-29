@@ -354,12 +354,6 @@ function init() {
     if (e.key === 'Enter') document.getElementById('genSelect').focus();
   });
 
-  // Load saved GAS URL
-  const savedUrl = getGasUrl();
-  if (savedUrl) {
-    const inp = document.getElementById('gasUrlInput');
-    if (inp) inp.value = savedUrl;
-  }
   updateSetupBanner();
 }
 
@@ -370,7 +364,13 @@ function switchTab(tab) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-'+tab).classList.add('active');
   if (tab === 'list') renderList();
-  if (tab === 'export') renderSummary();
+  if (tab === 'export') {
+    renderSummary();
+    // Load saved GAS URL into input field when tab becomes visible
+    const savedUrl = getGasUrl();
+    const inp = document.getElementById('gasUrlInput');
+    if (inp && savedUrl) inp.value = savedUrl;
+  }
   if (tab === 'scan') setTimeout(() => document.getElementById('serialInput').focus(), 100);
 }
 
@@ -681,7 +681,8 @@ function getGasUrl() {
 function updateSetupBanner() {
   const banner = document.getElementById('setupBanner');
   if (!banner) return;
-  banner.classList.toggle('hidden', !!getGasUrl());
+  const hasUrl = !!getGasUrl();
+  banner.classList.toggle('hidden', hasUrl);
 }
 
 function setSyncDot(state) {
